@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مقارنة ملفات Excel</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    h1 {
+      color: #343a40;
+      text-align: center;
+    }
+    input[type="file"] {
+      padding: 15px;
+      font-size: 16px;
+      margin: 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background-color: #e9ecef; /* Light background */
+      color: #495057; /* Darker text color */
+    }
+    input[type="file"]:hover {
+      background-color: #d3d9db; /* Slightly darker on hover */
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: block;
+      margin: 20px auto;
+    }
+    #error-message {
+      color: red;
+      text-align: center;
+    }
+    #summary {
+      display: none;
+      text-align: center;
+      font-weight: bold;
+    }
+    #difference-table-container {
+      display: none;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+      margin-top: 10px;
+    }
+    th {
+      background-color: #007BFF;
+      color: white;
+      padding: 10px;
+    }
+    td {
+      padding: 10px;
+      border: 1px solid #dee2e6;
+      background-color: #f1f3f5; /* Light background for cells */
+    }
+    tr:nth-child(even) td {
+      background-color: #e9ecef; /* Slightly different color for even rows */
+    }
+  </style>
+</head>
+<body>
+<h1>مقارنة ملفات Excel</h1>
+
+<div style="text-align: center;">
+  <label for="file1" style="display: inline-block;">اختر الملف 1:</label>
+  <input type="file" id="file1" accept=".xlsx" />
+  <label for="file2" style="display: inline-block;">اختر الملف 2:</label>
+  <input type="file" id="file2" accept=".xlsx" />
+</div>
+
+<button onclick="compareFiles()">قارن الملفات</button>
+<button id="reset-button" onclick="reset()" style="display: none;">إعادة تعيين</button>
+
+<p id="error-message"></p>
+
+<div id="summary"></div>
+<div id="no-differences-message" style="display: none; text-align: center; color: green; font-weight: bold;"></div>
+
+<div id="difference-table-container">
+  <h3>جدول الاختلافات</h3>
+  <table id="difference-table">
+    <thead>
+    <tr id="header-row"></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  function compareFiles() {
+    const file1 = document.getElementById('file1').files[0];
+    const file2 = document.getElementById('file2').files[0];
+
+    if (!file1 || !file2) {
+      alert('يرجى اختيار ملفين.');
+      return;
+    }
+
+    const reader1 = new FileReader();
+    const reader2 = new FileReader();
+
+    reader1.onload = function(e1) {
+      const data1 = new Uint8Array(e1.target.result);
+      const workbook1 = XLSX.read(data1, { type: 'array' });
+
+      reader2.onload = function(e2) {
+        const data2 = new Uint8Array(e2.target.result);
+        const workbook2 = XLSX.read(data2, { type: 'array' });
+
+        const sheet1 = workbook1.Sheets[workbook1.SheetNames[0]];
+        const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
+
+        const json1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
+        const json2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
+
+        const comparisonResults = checkSameStructure(json1, json2);
+
+        if (comparisonResults.isSameStructure) {
+          const updatedData = concatenateDifferences(json1, json2);
+          const mismatchedCount = countMismatchedCells(json1, json2);
+          displaySummary(mismatchedCount); // عرض عدد الخلايا غير المتطابقة
+
+          // Display no differences message or differences table
+          if (mismatchedCount > 0) {
+            displayDifferencesInTable(updatedData, json1[0]); // تم تمرير صف الرأس
+            createDownloadButton(updatedData); // إنشاء زر التحميل إذا كان هناك اختلاف
+          } else {
+            document.getElementById('no-differences-message').innerText = 'تهانينا! لا توجد اختلافات في الملفات.';
+            document.getElementById('no-differences-message').style.display = 'block'; // عرض رسالة التهنئة
+          }
+
+          document.getElementById('reset-button').style.display = 'block'; // عرض زر إعادة التعيين
+        } else {
+          displaySummary(0); // لا يوجد عدد غير متطابق إذا لم تتطابق البنية
+          document.getElementById('no-differences-message').style.display = 'none'; // إخفاء رسالة التهنئة إذا كان هناك اختلافات في البنية
+        }
+      };
+
+      reader2.readAsArrayBuffer(file2);
+    };
+
+    reader1.readAsArrayBuffer(file1);
+  }
+
+  function checkSameStructure(data1, data2) {
+    const errorMessageEl = document.getElementById('error-message');
+    let errors = [];
+
+    // تحقق مما إذا كانت الرؤوس (الصف الأول) متطابقة
+    const headers1 = data1[0];
+    const headers2 = data2[0];
+    for (let i = 0; i < headers1.length || i < headers2.length; i++) {
+      if ((headers1[i] || '') !== (headers2[i] || '')) {
+        errors.push(`اختلاف في رأس العمود عند العمود ${i + 1}: "${headers1[i] || ''}" مقابل "${headers2[i] || ''}"`);
+      }
+    }
+
+    // تحقق مما إذا كانت أسماء الطلاب (العمود الأول) متطابقة
+    for (let i = 1; i < Math.max(data1.length, data2.length); i++) {
+      const name1 = data1[i] ? data1[i][0] : '';
+      const name2 = data2[i] ? data2[i][0] : '';
+      if (name1 !== name2) {
+        errors.push(`اختلاف في اسم الطالب عند الصف ${i + 1}: "${name1}" مقابل "${name2}"`);
+      }
+    }
+
+    // عرض الأخطاء إذا كانت هناك اختلافات
+    if (errors.length > 0) {
+      errorMessageEl.innerHTML = errors.join('<br>');
+      return { isSameStructure: false };
+    } else {
+      errorMessageEl.innerHTML = ''; // مسح أي أخطاء سابقة
+      return { isSameStructure: true };
+    }
+  }
+
+  function concatenateDifferences(data1, data2) {
+    const updatedData = [];
+
+    // الاحتفاظ بصف الرأس من الملف 1
+    updatedData.push(data1[0]);
+
+    // حلقة عبر الصفوف ومقارنة خلية بخلية
+    const maxRows = Math.max(data1.length, data2.length);
+    for (let i = 1; i < maxRows; i++) {
+      const row1 = data1[i] || [];
+      const row2 = data2[i] || [];
+
+      const newRow = [];
+      const maxCols = Math.max(row1.length, row2.length);
+      for (let j = 0; j < maxCols; j++) {
+        if (j === 0) {
+          // دائمًا الاحتفاظ بالعمود الأول (أسماء الطلاب)
+          newRow.push(row1[j]);
+        } else {
+          const cell1 = row1[j] || '';
+          const cell2 = row2[j] || '';
+
+          // إذا كانت القيم مختلفة، دمجها بفاصل
+          if (cell1 !== cell2) {
+            if (cell1 && cell2) {
+              newRow.push(cell1 + " / " + cell2); // دمج القيمتين
+            } else if (cell1) {
+              newRow.push(cell1); // إذا كان فقط الملف 1 يحتوي على القيمة
+            } else if (cell2) {
+              newRow.push(cell2); // إذا كان فقط الملف 2 يحتوي على القيمة
+            } else {
+              newRow.push(''); // إذا لم يكن هناك قيمة
+            }
+          } else {
+            newRow.push(''); // إذا كانت القيم متطابقة، الاحتفاظ بأحدها
+          }
+        }
+      }
+      updatedData.push(newRow);
+    }
+    return updatedData; // إرجاع البيانات المحدثة
+  }
+
+  function countMismatchedCells(data1, data2) {
+    let mismatchedCount = 0;
+    const maxRows = Math.max(data1.length, data2.length);
+
+    for (let i = 1; i < maxRows; i++) { // بدءًا من 1 لتخطي الصف الأول (الرأس)
+      const row1 = data1[i] || [];
+      const row2 = data2[i] || [];
+      const maxCols = Math.max(row1.length, row2.length);
+
+      for (let j = 1; j < maxCols; j++) { // بدءًا من 1 لتخطي العمود الأول (أسماء الطلاب)
+        const cell1 = row1[j] || '';
+        const cell2 = row2[j] || '';
+
+        if (cell1 !== cell2 && (cell1 || cell2)) { // العد إذا كانت على الأقل خلية واحدة غير فارغة
+          mismatchedCount++;
+        }
+      }
+    }
+    return mismatchedCount; // إرجاع عدد الخلايا غير المتطابقة
+  }
+
+  function displaySummary(mismatchedCount) {
+    const summaryEl = document.getElementById('summary');
+    if (mismatchedCount > 0) {
+      summaryEl.innerHTML = `عدد الخلايا غير المتطابقة: ${mismatchedCount}`;
+      summaryEl.style.display = 'block'; // إظهار ملخص العدد
+    } else {
+      summaryEl.innerHTML = ''; // لا تظهر أي ملخص إذا لم يكن هناك خلايا غير متطابقة
+    }
+  }
+
+  function displayDifferencesInTable(data, headers) {
+    const tableContainer = document.getElementById('difference-table-container');
+    const table = document.getElementById('difference-table').getElementsByTagName('tbody')[0];
+    const headerRow = document.getElementById('header-row');
+
+    // مسح الجدول أولاً
+    table.innerHTML = '';
+    headerRow.innerHTML = ''; // مسح صف الرأس
+
+    // إضافة الرؤوس إلى صف الرأس
+    headers.forEach(header => {
+      const th = document.createElement('th');
+      th.textContent = header;
+      headerRow.appendChild(th);
+    });
+
+    // إضافة البيانات
+    for (let i = 1; i < data.length; i++) {
+      const row = table.insertRow();
+      for (let j = 0; j < data[i].length; j++) {
+        const cell = row.insertCell();
+        cell.textContent = data[i][j]; // إدراج القيمة في الخلية
+
+        // إضافة التنسيق للخلايا غير الفارغة، باستثناء العمود الأول
+        if (j !== 0 && data[i][j] !== '') {
+          cell.style.backgroundColor = '#f8d7da'; // لون خلفية أحمر فاتح
+        }
+      }
+    }
+
+    tableContainer.style.display = 'block'; // إظهار حاوية الجدول
+  }
+
+
+
+  function createDownloadButton(data) {
+    const existingButton = document.getElementById('download-link');
+    if (existingButton) {
+      existingButton.remove(); // إزالة الزر السابق إذا كان موجودًا
+    }
+
+    const newButton = document.createElement('a');
+    newButton.id = 'download-link';
+    newButton.textContent = 'تحميل الاختلافات';
+    newButton.style.display = 'inline-block'; // عرض الزر ككتلة
+    newButton.style.marginTop = '20px';
+    newButton.style.padding = '10px 20px';
+    newButton.style.backgroundColor = '#28a745'; // لون أخضر
+    newButton.style.color = 'white';
+    newButton.style.border = 'none';
+    newButton.style.borderRadius = '5px';
+    newButton.style.cursor = 'pointer';
+
+    newButton.onclick = function() {
+      createDifferenceExcel(data);
+    };
+
+    document.body.appendChild(newButton); // إضافة الزر إلى الجسم
+  }
+
+  function createDifferenceExcel(data) {
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'الاختلافات');
+
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'اختلافات_الملف1.xlsx';
+    a.textContent = 'تحميل الاختلافات';
+    document.body.appendChild(a); // إضافة الرابط إلى الجسم
+    a.click(); // تشغيل التنزيل
+    document.body.removeChild(a); // إزالة الرابط بعد التنزيل
+  }
+
+  function reset() {
+    document.getElementById('file1').value = '';
+    document.getElementById('file2').value = '';
+    document.getElementById('summary').style.display = 'none';
+    document.getElementById('error-message').innerHTML = '';
+    document.getElementById('difference-table-container').style.display = 'none';
+    document.getElementById('no-differences-message').style.display = 'none'; // إخفاء رسالة عدم الاختلافات
+    const tableBody = document.getElementById('difference-table').getElementsByTagName('tbody')[0];
+    tableBody.innerHTML = ''; // مسح البيانات من الجدول
+    const existingButton = document.getElementById('download-link');
+    if (existingButton) {
+      existingButton.remove(); // إزالة زر التحميل إذا كان موجودًا
+    }
+    document.getElementById('reset-button').style.display = 'none'; // إخفاء زر إعادة التعيين
+  }
+
+  document.getElementById('file1').addEventListener('change', function() {
+    if (document.getElementById('summary').style.display === 'block' || document.getElementById('difference-table-container').style.display === 'block' || document.getElementById('no-differences-message').style.display === 'block') {
+      const confirmUpload = confirm('هل تريد مقارنة ملفات جديدة؟ سيتم مسح النتائج الحالية.');
+      if (confirmUpload) {
+        reset(); // إعادة تعيين إذا أكد المستخدم
+      } else {
+        this.value = ''; // إعادة تعيين حقل الملف إذا رفض المستخدم
+      }
+    }
+  });
+
+  document.getElementById('file2').addEventListener('change', function() {
+    if (document.getElementById('summary').style.display === 'block' || document.getElementById('difference-table-container').style.display === 'block' || document.getElementById('no-differences-message').style.display === 'block') {
+      const confirmUpload = confirm('هل تريد مقارنة ملفات جديدة؟ سيتم مسح النتائج الحالية.');
+      if (confirmUpload) {
+        reset(); // إعادة تعيين إذا أكد المستخدم
+      } else {
+        this.value = ''; // إعادة تعيين حقل الملف إذا رفض المستخدم
+      }
+    }
+  });
+</script>
+</body>
+</html>
