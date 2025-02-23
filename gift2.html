@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -171,5 +172,39 @@
             <textarea id="resultDisplay" class="form-control" rows="8" readonly></textarea>
         </div>
     </div>
+
+
+    <script>
+        document.getElementById('proceedButton').addEventListener('click', function () {
+            let questionName = document.getElementById('questionNameInput').value.trim();
+            const inputText = document.getElementById('richTextInput').value;
+            const questions = inputText.split(/\n(?=\d+\.)/);
+            
+            let giftText = "";
+            let questionNumber = 1;
+
+            questions.forEach(question => {
+                const lines = question.split('\n');
+                let questionLine = lines[0].trim().replace(/^\d+\.?\s*/, '');
+                const options = lines.slice(1).map(line => line.trim().replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '')).filter(line => line);
+                
+                // Shuffle options
+                for (let i = options.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [options[i], options[j]] = [options[j], options[i]];
+                }
+
+                const correctAnswer = options[0];
+                giftText += `::${questionName}_Q${questionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n`;
+                options.forEach(option => {
+                    giftText += option === correctAnswer ? `=<p class="options">${option}</p>\n` : `~<p class="options">${option}</p>\n`;
+                });
+                giftText += "}\n\n";
+                questionNumber++;
+            });
+
+            document.getElementById('resultDisplay').value = giftText.trim();
+        });
+    </script>
 </body>
 </html>
