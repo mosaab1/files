@@ -104,72 +104,149 @@
             <textarea id="resultDisplay" class="form-control" rows="10" readonly></textarea>
         </div>
     </div>
-    <script>
-      document.getElementById('proceedButton').addEventListener('click', function() {
-    let questionName = document.getElementById('questionNameInput').value.trim();
-    const inputText = document.getElementById('richTextInput').value;
-    const questions = inputText.split(/\n(?=\d+\.)/);
-    const tagInputs = document.querySelectorAll('.tag-input');
-    const tags = Array.from(tagInputs).map(input => input.value.trim()).filter(tag => tag);
-    const categoryInputs = document.querySelectorAll('.category-input');
-    const categories = Array.from(categoryInputs).map(input => input.value.trim()).filter(category => category);
-
-    let giftText = "";
-    let questionNumber = 1;
-    const now = new Date();
-    const dateTimeString = now.toISOString().split("T")[0]; // YYYY-MM-DD
-
-    let categoryString = `$CATEGORY: $course$/top/`;
-    categoryString += categories.length ? categories.join('/') + ' ' + dateTimeString + '\n\n' : dateTimeString + '\n\n';
-    giftText += categoryString;
-
-    questions.forEach(question => {
-        const lines = question.split('\n');
-        let questionLine = lines[0].trim().replace(/^\d+\.?\s*/, '');
-        const options = lines.slice(1).map(line => line.trim().replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '')).filter(line => line);
-
-        // Shuffle options
-        for (let i = options.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [options[i], options[j]] = [options[j], options[i]];
-        }
-
-        const formattedQuestionNumber = String(questionNumber).padStart(2, '0');
-        const correctAnswer = options[0];
-
-        if (tags.length) {
-            giftText += "// " + tags.map(tag => `[tag:${tag}]`).join(" ") + "\n";
-        }
-
-        giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n`;
-        options.forEach(option => {
-            giftText += option === correctAnswer ? `=<p class="options">${option}</p>\n` : `~<p class="options">${option}</p>\n`;
-        });
-        giftText += "}\n\n";
-        questionNumber++;
-    });
-
-    document.getElementById('resultDisplay').value = giftText.trim();
-
-    // Handle file saving
-    if (!questionName) {
-        questionName = prompt("Please enter a file name:", "my_questions");
-        if (!questionName) {
-            alert("File save cancelled.");
-            return;
-        }
+ <script>
+    // Helper function to manage cookies
+    function setCookie(name, value, days) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/`;
     }
 
-    const blob = new Blob([giftText.trim()], { type: "text/plain" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${questionName}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-});
+    function getCookie(name) {
+        const cookieArr = document.cookie.split("; ");
+        for (let cookie of cookieArr) {
+            const [key, val] = cookie.split("=");
+            if (key === name) return decodeURIComponent(val);
+        }
+        return "";
+    }
 
-    </script>
+    // Function to store inputs in cookies
+    function saveInputsToCookies() {
+        const categories = Array.from(document.querySelectorAll('.category-input')).map(input => input.value.trim()).filter(v => v);
+        const tags = Array.from(document.querySelectorAll('.tag-input')).map(input => input.value.trim()).filter(v => v);
+        const questionName = document.getElementById('questionNameInput').value.trim();
+
+        if (categories.length) setCookie("categories", categories.join(","), 30);
+        if (tags.length) setCookie("tags", tags.join(","), 30);
+        if (questionName) setCookie("questionName", questionName, 30);
+    }
+
+    // Function to load cookies into inputs
+    function loadInputsFromCookies() {
+        const categories = getCookie("categories").split(",");
+        const tags = getCookie("tags").split(",");
+        const questionName = getCookie("questionName");
+
+        if (categories.length) {
+            document.querySelectorAll('.category-input').forEach((input, index) => {
+                if (categories[index]) input.value = categories[index];
+            });
+        }
+
+        if (tags.length) {
+            document.querySelectorAll('.tag-input').forEach((input, index) => {
+                if (tags[index]) input.value = tags[index];
+            });
+        }
+
+        if (questionName) document.getElementById('questionNameInput').value = questionName;
+    }
+
+    // Autocomplete suggestions
+    function setupAutocomplete(inputSelector, cookieName) {
+        document.querySelectorAll(inputSelector).forEach(input => {
+            input.addEventListener("input", function () {
+                const storedValues = getCookie(cookieName).split(",");
+                const suggestions = storedValues.filter(v => v.toLowerCase().includes(this.value.toLowerCase()));
+                this.setAttribute("list", `${cookieName}-datalist`);
+                let datalist = document.getElementById(`${cookieName}-datalist`);
+                if (!datalist) {
+                    datalist = document.createElement("datalist");
+                    datalist.id = `${cookieName}-datalist`;
+                    document.body.appendChild(datalist);
+                }
+                datalist.innerHTML = suggestions.map(s => `<option value="${s}">`).join("");
+            });
+        });
+    }
+
+    // Execute on page load
+    document.addEventListener("DOMContentLoaded", function () {
+        loadInputsFromCookies();
+        setupAutocomplete(".category-input", "categories");
+        setupAutocomplete(".tag-input", "tags");
+        setupAutocomplete("#questionNameInput", "questionName");
+    });
+
+    // Proceed Button - Process and Save Data
+    document.getElementById('proceedButton').addEventListener('click', function () {
+        let questionName = document.getElementById('questionNameInput').value.trim();
+        const inputText = document.getElementById('richTextInput').value;
+        const questions = inputText.split(/\n(?=\d+\.)/);
+        const tags = Array.from(document.querySelectorAll('.tag-input')).map(input => input.value.trim()).filter(tag => tag);
+        const categories = Array.from(document.querySelectorAll('.category-input')).map(input => input.value.trim()).filter(category => category);
+
+        let giftText = "";
+        let questionNumber = 1;
+        const now = new Date();
+        const dateTimeString = now.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        let categoryString = `$CATEGORY: $course$/top/`;
+        categoryString += categories.length ? categories.join('/') + ' ' + dateTimeString + '\n\n' : dateTimeString + '\n\n';
+        giftText += categoryString;
+
+        questions.forEach(question => {
+            const lines = question.split('\n');
+            let questionLine = lines[0].trim().replace(/^\d+\.?\s*/, '');
+            const options = lines.slice(1).map(line => line.trim().replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '')).filter(line => line);
+
+            // Shuffle options
+            for (let i = options.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [options[i], options[j]] = [options[j], options[i]];
+            }
+
+            const formattedQuestionNumber = String(questionNumber).padStart(2, '0');
+            const correctAnswer = options[0];
+
+            if (tags.length) {
+                giftText += "// " + tags.map(tag => `[tag:${tag}]`).join(" ") + "\n";
+            }
+
+            giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n`;
+            options.forEach(option => {
+                giftText += option === correctAnswer ? `=<p class="options">${option}</p>\n` : `~<p class="options">${option}</p>\n`;
+            });
+            giftText += "}\n\n";
+            questionNumber++;
+        });
+
+        document.getElementById('resultDisplay').value = giftText.trim();
+
+        // Save input to cookies
+        saveInputsToCookies();
+
+        // Handle file saving
+        if (!questionName) {
+            questionName = prompt("Please enter a file name:", "my_questions");
+            if (!questionName) {
+                alert("File save cancelled.");
+                return;
+            }
+        }
+
+        const blob = new Blob([giftText.trim()], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${questionName}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+</script>
+
     
     
 </body>
