@@ -104,36 +104,31 @@
             <textarea id="resultDisplay" class="form-control" rows="10" readonly></textarea>
         </div>
     </div>
-
     <script>
-        document.getElementById('proceedButton').addEventListener('click', function() {
-            const questionName = document.getElementById('questionNameInput').value;
+            const questionName = document.getElementById('questionNameInput').value.trim();
             const inputText = document.getElementById('richTextInput').value;
             const questions = inputText.split(/\n(?=\d+\.)/);
             const tagInputs = document.querySelectorAll('.tag-input');
             const tags = Array.from(tagInputs).map(input => input.value).filter(tag => tag);
             const categoryInputs = document.querySelectorAll('.category-input');
             const categories = Array.from(categoryInputs).map(input => input.value).filter(category => category);
-
+    
             let giftText = "";
             let questionNumber = 1;
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const dateTimeString = year + "-" + month + "-" + day + " " + hours + ":" + minutes;
-
+            const dateTimeString = `${year}-${month}-${day}`;
+    
             let categoryString = "$CATEGORY: $course$/top/";
             if (categories.length > 0) {
-                categoryString += categories.filter(cat => cat).join('/') + ' ' + dateTimeString + '\n\n'; //added \n for blank line
+                categoryString += categories.join('/') + ' ' + dateTimeString + '\n\n';
             } else {
-                categoryString += dateTimeString + '\n\n'; // added \n for blank line
+                categoryString += dateTimeString + '\n\n';
             }
-
             giftText += categoryString;
-
+    
             questions.forEach(question => {
                 const lines = question.split('\n');
                 let questionLine = lines[0].trim();
@@ -143,6 +138,7 @@
                     option = option.replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '');
                     return option;
                 }).filter(line => line);
+                
                 function shuffleArray(array) {
                     for (let i = array.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -150,29 +146,44 @@
                     }
                     return array;
                 }
+    
                 const shuffledOptions = shuffleArray([...options]);
                 const formattedQuestionNumber = String(questionNumber).padStart(2, '0');
                 const correctAnswer = options[0];
-
+    
                 if (tags.length > 0) {
-                    giftText += "// " + tags.map(tag => [tag:${tag}]).join(" ") + "\n";
+                    giftText += "// " + tags.map(tag => `[tag:${tag}]`).join(" ") + "\n";
                 }
-
-                giftText += "::" + questionName + "_Q" + formattedQuestionNumber + "[" + correctAnswer + "]::<p class\\=\"q_stem\">" + questionLine + "</p> { \n";
-                if (shuffledOptions.length > 0) {
-                    for (let i = 0; i < shuffledOptions.length; i++) {
-                        if (shuffledOptions[i] === correctAnswer) {
-                            giftText += "=<p class\\=\"options\">" + shuffledOptions[i] + "</p>\n";
-                        } else {
-                            giftText += "~<p class\\=\"options\">" + shuffledOptions[i] + "</p>\n";
-                        }
+    
+                giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class\\="q_stem">${questionLine}</p> {\n`;
+                shuffledOptions.forEach(option => {
+                    if (option === correctAnswer) {
+                        giftText += `=<p class\\="options">${option}</p>\n`;
+                    } else {
+                        giftText += `~<p class\\="options">${option}</p>\n`;
                     }
-                }
+                });
                 giftText += "}\n\n";
                 questionNumber++;
             });
+    
             document.getElementById('resultDisplay').value = giftText.trim();
+    
+            // Download as text file
+            if (questionName) {
+                const blob = new Blob([giftText.trim()], { type: "text/plain" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${questionName}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert("Please enter a Question Name to save the file.");
+            }
         });
     </script>
+    
+    
 </body>
 </html>
