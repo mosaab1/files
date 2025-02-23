@@ -130,7 +130,7 @@
         </div>
     </div>
 <script>
-    // Helper function to manage cookies
+    // Helper functions for managing cookies
     function setCookie(name, value, days) {
         const expires = new Date();
         expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -146,65 +146,41 @@
         return "";
     }
 
-    // Function to store inputs in cookies
-    function saveInputsToCookies() {
-        const categories = Array.from(document.querySelectorAll('.category-input')).map(input => input.value.trim()).filter(v => v);
-        const tags = Array.from(document.querySelectorAll('.tag-input')).map(input => input.value.trim()).filter(v => v);
-        const questionName = document.getElementById('questionNameInput').value.trim();
-
-        if (categories.length) setCookie("categories", categories.join(","), 30);
-        if (tags.length) setCookie("tags", tags.join(","), 30);
-        if (questionName) setCookie("questionName", questionName, 30);
+    // Save user input in cookies without duplicates
+    function saveInputToCookies(inputSelector, cookieName) {
+        document.querySelectorAll(inputSelector).forEach(input => {
+            input.addEventListener("blur", function () {
+                let storedValues = getCookie(cookieName).split(",");
+                storedValues = storedValues.filter(v => v); // Remove empty values
+                if (!storedValues.includes(this.value.trim()) && this.value.trim() !== "") {
+                    storedValues.push(this.value.trim());
+                    setCookie(cookieName, storedValues.join(","), 30);
+                }
+            });
+        });
     }
 
-    // Function to load cookies into inputs
-    function loadInputsFromCookies() {
-        const categories = getCookie("categories").split(",");
-        const tags = getCookie("tags").split(",");
-        const questionName = getCookie("questionName");
-
-        if (categories.length) {
-            document.querySelectorAll('.category-input').forEach((input, index) => {
-                if (categories[index]) input.value = categories[index];
-            });
-        }
-
-        if (tags.length) {
-            document.querySelectorAll('.tag-input').forEach((input, index) => {
-                if (tags[index]) input.value = tags[index];
-            });
-        }
-
-        if (questionName) document.getElementById('questionNameInput').value = questionName;
-    }
-
-    // Autocomplete suggestions
+    // Provide autocomplete suggestions from stored cookies
     function setupAutocomplete(inputSelector, cookieName) {
         document.querySelectorAll(inputSelector).forEach(input => {
             input.addEventListener("input", function () {
-                const storedValues = getCookie(cookieName).split(",");
-                const suggestions = storedValues.filter(v => v.toLowerCase().includes(this.value.toLowerCase()));
-                this.setAttribute("list", `${cookieName}-datalist`);
+                let storedValues = getCookie(cookieName).split(",");
+                storedValues = storedValues.filter(v => v.toLowerCase().includes(this.value.toLowerCase()));
+
+                // Create a datalist for autocomplete
                 let datalist = document.getElementById(`${cookieName}-datalist`);
                 if (!datalist) {
                     datalist = document.createElement("datalist");
                     datalist.id = `${cookieName}-datalist`;
                     document.body.appendChild(datalist);
                 }
-                datalist.innerHTML = suggestions.map(s => `<option value="${s}">`).join("");
+                datalist.innerHTML = storedValues.map(v => `<option value="${v}">`).join("");
+                this.setAttribute("list", datalist.id);
             });
         });
     }
 
-    // Execute on page load
-    document.addEventListener("DOMContentLoaded", function () {
-        loadInputsFromCookies();
-        setupAutocomplete(".category-input", "categories");
-        setupAutocomplete(".tag-input", "tags");
-        setupAutocomplete("#questionNameInput", "questionName");
-    });
-
-    // Proceed Button - Process and Save Data
+    // Process the input and generate GIFT format
     document.getElementById('proceedButton').addEventListener('click', function () {
         let questionName = document.getElementById('questionNameInput').value.trim();
         const inputText = document.getElementById('richTextInput').value;
@@ -250,7 +226,9 @@
         document.getElementById('resultDisplay').value = giftText.trim();
 
         // Save input to cookies
-        saveInputsToCookies();
+        saveInputToCookies(".category-input", "categories");
+        saveInputToCookies(".tag-input", "tags");
+        saveInputToCookies("#questionNameInput", "questionName");
 
         // Handle file saving
         if (!questionName) {
@@ -270,10 +248,18 @@
         document.body.removeChild(link);
     });
 
+    // Setup event listeners on page load
+    document.addEventListener("DOMContentLoaded", function () {
+        setupAutocomplete(".category-input", "categories");
+        setupAutocomplete(".tag-input", "tags");
+        setupAutocomplete("#questionNameInput", "questionName");
+
+        saveInputToCookies(".category-input", "categories");
+        saveInputToCookies(".tag-input", "tags");
+        saveInputToCookies("#questionNameInput", "questionName");
+    });
 </script>
 
-
-    
     
 </body>
 </html>
