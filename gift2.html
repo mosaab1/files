@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,35 +93,10 @@
             </div>
         </div>
 
-<div class="row mb-3">
-    <!-- Input Text Area (col-8) -->
-    <div class="col-md-8">
-        <label for="richTextInput" class="form-label">Input:</label>
-        <textarea id="richTextInput" class="form-control" rows="15"></textarea>
-    </div>
-
-    <!-- Explanation Text (col-4) -->
-    <div class="col-md-4">
-        <div class="card p-3 bg-light">
-            <h5>Formatting Instructions</h5>
-            <p>
-                Use **numeric numbering** for questions and **non-numeric bullets** for answer options.
-            </p>
-            <p>Example format:</p>
-            <pre style="background:#fff; padding:10px; border:1px solid #ccc;">
-1. You are not sick.
-   i. hope
-   ii. tired
-   iii. well
-   iv. remember
-            </pre>
-            <p>
-                Ensure that questions start with a **number followed by a dot (e.g., 1.)**, and options should be **indented and use non-numeric bullets (i, ii, iii, etc.)**.
-            </p>
+        <div class="mb-3">
+            <label for="richTextInput" class="form-label">Input:</label>
+            <textarea id="richTextInput" class="form-control" rows="15"></textarea>
         </div>
-    </div>
-</div>
-
         <button id="proceedButton" class="btn btn-primary">Proceed</button>
         
         <div class="mb-3 mt-4">
@@ -130,17 +104,8 @@
             <textarea id="resultDisplay" class="form-control" rows="10" readonly></textarea>
         </div>
     </div>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-    if (performance.navigation.type === 1) {
-        // Clear only input fields, keeping cookies for autocomplete
-        document.querySelectorAll("input, textarea").forEach(input => {
-            input.value = "";
-        });
-    }
-});
-
-    // Helper functions for managing cookies
+ <script>
+    // Helper function to manage cookies
     function setCookie(name, value, days) {
         const expires = new Date();
         expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -156,36 +121,65 @@
         return "";
     }
 
-    // Save user input to cookies (only when user leaves the field)
-    function saveInputToCookies(inputSelector, cookieName) {
+    // Function to store inputs in cookies
+    function saveInputsToCookies() {
+        const categories = Array.from(document.querySelectorAll('.category-input')).map(input => input.value.trim()).filter(v => v);
+        const tags = Array.from(document.querySelectorAll('.tag-input')).map(input => input.value.trim()).filter(v => v);
+        const questionName = document.getElementById('questionNameInput').value.trim();
+
+        if (categories.length) setCookie("categories", categories.join(","), 30);
+        if (tags.length) setCookie("tags", tags.join(","), 30);
+        if (questionName) setCookie("questionName", questionName, 30);
+    }
+
+    // Function to load cookies into inputs
+    function loadInputsFromCookies() {
+        const categories = getCookie("categories").split(",");
+        const tags = getCookie("tags").split(",");
+        const questionName = getCookie("questionName");
+
+        if (categories.length) {
+            document.querySelectorAll('.category-input').forEach((input, index) => {
+                if (categories[index]) input.value = categories[index];
+            });
+        }
+
+        if (tags.length) {
+            document.querySelectorAll('.tag-input').forEach((input, index) => {
+                if (tags[index]) input.value = tags[index];
+            });
+        }
+
+        if (questionName) document.getElementById('questionNameInput').value = questionName;
+    }
+
+    // Autocomplete suggestions
+    function setupAutocomplete(inputSelector, cookieName) {
         document.querySelectorAll(inputSelector).forEach(input => {
-            input.addEventListener("blur", function () {
-                let storedValues = new Set(getCookie(cookieName).split(","));
-                if (this.value.trim()) {
-                    storedValues.add(this.value.trim()); // Prevent duplicates
-                    setCookie(cookieName, Array.from(storedValues).join(","), 30);
+            input.addEventListener("input", function () {
+                const storedValues = getCookie(cookieName).split(",");
+                const suggestions = storedValues.filter(v => v.toLowerCase().includes(this.value.toLowerCase()));
+                this.setAttribute("list", ${cookieName}-datalist);
+                let datalist = document.getElementById(${cookieName}-datalist);
+                if (!datalist) {
+                    datalist = document.createElement("datalist");
+                    datalist.id = ${cookieName}-datalist;
+                    document.body.appendChild(datalist);
                 }
+                datalist.innerHTML = suggestions.map(s => <option value="${s}">).join("");
             });
         });
     }
 
-    // Provide autocomplete suggestions from stored cookies
-    function setupAutocomplete(inputSelector, cookieName) {
-        const storedValues = getCookie(cookieName).split(",").filter(v => v); // Remove empty values
-        if (storedValues.length === 0) return;
+    // Execute on page load
+    document.addEventListener("DOMContentLoaded", function () {
+        loadInputsFromCookies();
+        setupAutocomplete(".category-input", "categories");
+        setupAutocomplete(".tag-input", "tags");
+        setupAutocomplete("#questionNameInput", "questionName");
+    });
 
-        // Create a single <datalist> per field type
-        let datalist = document.createElement("datalist");
-        datalist.id = ${cookieName}-datalist;
-        datalist.innerHTML = storedValues.map(v => <option value="${v}">).join("");
-        document.body.appendChild(datalist);
-
-        document.querySelectorAll(inputSelector).forEach(input => {
-            input.setAttribute("list", datalist.id);
-        });
-    }
-
-    // Process the input and generate GIFT format
+    // Proceed Button - Process and Save Data
     document.getElementById('proceedButton').addEventListener('click', function () {
         let questionName = document.getElementById('questionNameInput').value.trim();
         const inputText = document.getElementById('richTextInput').value;
@@ -231,9 +225,7 @@
         document.getElementById('resultDisplay').value = giftText.trim();
 
         // Save input to cookies
-        saveInputToCookies(".category-input", "categories");
-        saveInputToCookies(".tag-input", "tags");
-        saveInputToCookies("#questionNameInput", "questionName");
+        saveInputsToCookies();
 
         // Handle file saving
         if (!questionName) {
@@ -253,18 +245,9 @@
         document.body.removeChild(link);
     });
 
-    // Optimize event listeners & autocomplete setup on page load
-    document.addEventListener("DOMContentLoaded", function () {
-        setupAutocomplete(".category-input", "categories");
-        setupAutocomplete(".tag-input", "tags");
-        setupAutocomplete("#questionNameInput", "questionName");
-
-        saveInputToCookies(".category-input", "categories");
-        saveInputToCookies(".tag-input", "tags");
-        saveInputToCookies("#questionNameInput", "questionName");
-    });
 </script>
 
     
+    
 </body>
-</html>
+</html> 
