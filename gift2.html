@@ -174,37 +174,140 @@
     </div>
 
 
-    <script>
-        document.getElementById('proceedButton').addEventListener('click', function () {
-            let questionName = document.getElementById('questionNameInput').value.trim();
-            const inputText = document.getElementById('richTextInput').value;
-            const questions = inputText.split(/\n(?=\d+\.)/);
-            
-            let giftText = "";
-            let questionNumber = 1;
-
-            questions.forEach(question => {
-                const lines = question.split('\n');
-                let questionLine = lines[0].trim().replace(/^\d+\.?\s*/, '');
-                const options = lines.slice(1).map(line => line.trim().replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '')).filter(line => line);
-                
-                // Shuffle options
-                for (let i = options.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [options[i], options[j]] = [options[j], options[i]];
-                }
-
-                const correctAnswer = options[0];
-                giftText += `::${questionName}_Q${questionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n`;
-                options.forEach(option => {
-                    giftText += option === correctAnswer ? `=<p class="options">${option}</p>\n` : `~<p class="options">${option}</p>\n`;
-                });
-                giftText += "}\n\n";
-                questionNumber++;
-            });
-
-            document.getElementById('resultDisplay').value = giftText.trim();
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    if (performance.navigation.type === 1) {
+        // Clear only input fields, keeping cookies for autocomplete
+        document.querySelectorAll("input, textarea").forEach(input => {
+            input.value = "";
         });
-    </script>
+    }
+});
+
+    // Helper functions for managing cookies
+    function setCookie(name, value, days) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = ${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;
+    }
+
+    function getCookie(name) {
+        const cookieArr = document.cookie.split("; ");
+        for (let cookie of cookieArr) {
+            const [key, val] = cookie.split("=");
+            if (key === name) return decodeURIComponent(val);
+        }
+        return "";
+    }
+
+    // Save user input to cookies (only when user leaves the field)
+    function saveInputToCookies(inputSelector, cookieName) {
+        document.querySelectorAll(inputSelector).forEach(input => {
+            input.addEventListener("blur", function () {
+                let storedValues = new Set(getCookie(cookieName).split(","));
+                if (this.value.trim()) {
+                    storedValues.add(this.value.trim()); // Prevent duplicates
+                    setCookie(cookieName, Array.from(storedValues).join(","), 30);
+                }
+            });
+        });
+    }
+
+    // Provide autocomplete suggestions from stored cookies
+    function setupAutocomplete(inputSelector, cookieName) {
+        const storedValues = getCookie(cookieName).split(",").filter(v => v); // Remove empty values
+        if (storedValues.length === 0) return;
+
+        // Create a single <datalist> per field type
+        let datalist = document.createElement("datalist");
+        datalist.id = ${cookieName}-datalist;
+        datalist.innerHTML = storedValues.map(v => <option value="${v}">).join("");
+        document.body.appendChild(datalist);
+
+        document.querySelectorAll(inputSelector).forEach(input => {
+            input.setAttribute("list", datalist.id);
+        });
+    }
+
+    // Process the input and generate GIFT format
+    document.getElementById('proceedButton').addEventListener('click', function () {
+        let questionName = document.getElementById('questionNameInput').value.trim();
+        const inputText = document.getElementById('richTextInput').value;
+        const questions = inputText.split(/\n(?=\d+\.)/);
+        const tags = Array.from(document.querySelectorAll('.tag-input')).map(input => input.value.trim()).filter(tag => tag);
+        const categories = Array.from(document.querySelectorAll('.category-input')).map(input => input.value.trim()).filter(category => category);
+
+        let giftText = "";
+        let questionNumber = 1;
+        const now = new Date();
+        const dateTimeString = now.toISOString().split("T")[0]; // YYYY-MM-DD
+
+        let categoryString = $CATEGORY: $course$/top/;
+        categoryString += categories.length ? categories.join('/') + ' ' + dateTimeString + '\n\n' : dateTimeString + '\n\n';
+        giftText += categoryString;
+
+        questions.forEach(question => {
+            const lines = question.split('\n');
+            let questionLine = lines[0].trim().replace(/^\d+\.?\s*/, '');
+            const options = lines.slice(1).map(line => line.trim().replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '')).filter(line => line);
+
+            // Shuffle options
+            for (let i = options.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [options[i], options[j]] = [options[j], options[i]];
+            }
+
+            const formattedQuestionNumber = String(questionNumber).padStart(2, '0');
+            const correctAnswer = options[0];
+
+            if (tags.length) {
+                giftText += "// " + tags.map(tag => [tag:${tag}]).join(" ") + "\n";
+            }
+
+            giftText += ::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n;
+            options.forEach(option => {
+                giftText += option === correctAnswer ? =<p class="options">${option}</p>\n : ~<p class="options">${option}</p>\n;
+            });
+            giftText += "}\n\n";
+            questionNumber++;
+        });
+
+        document.getElementById('resultDisplay').value = giftText.trim();
+
+        // Save input to cookies
+        saveInputToCookies(".category-input", "categories");
+        saveInputToCookies(".tag-input", "tags");
+        saveInputToCookies("#questionNameInput", "questionName");
+
+        // Handle file saving
+        if (!questionName) {
+            questionName = prompt("Please enter a file name:", "my_questions");
+            if (!questionName) {
+                alert("File save cancelled.");
+                return;
+            }
+        }
+
+        const blob = new Blob([giftText.trim()], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = ${questionName}.txt;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // Optimize event listeners & autocomplete setup on page load
+    document.addEventListener("DOMContentLoaded", function () {
+        setupAutocomplete(".category-input", "categories");
+        setupAutocomplete(".tag-input", "tags");
+        setupAutocomplete("#questionNameInput", "questionName");
+
+        saveInputToCookies(".category-input", "categories");
+        saveInputToCookies(".tag-input", "tags");
+        saveInputToCookies("#questionNameInput", "questionName");
+    });
+</script>
+
 </body>
 </html>
