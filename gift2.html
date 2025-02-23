@@ -130,6 +130,15 @@
         </div>
     </div>
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+    if (performance.navigation.type === 1) {
+        // Clear only input fields, keeping cookies for autocomplete
+        document.querySelectorAll("input, textarea").forEach(input => {
+            input.value = "";
+        });
+    }
+});
+
     // Helper functions for managing cookies
     function setCookie(name, value, days) {
         const expires = new Date();
