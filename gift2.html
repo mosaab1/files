@@ -93,10 +93,35 @@
             </div>
         </div>
 
-        <div class="mb-3">
-            <label for="richTextInput" class="form-label">Input:</label>
-            <textarea id="richTextInput" class="form-control" rows="15"></textarea>
+<div class="row mb-3">
+    <!-- Input Text Area (col-8) -->
+    <div class="col-8">
+        <label for="richTextInput" class="form-label">Input:</label>
+        <textarea id="richTextInput" class="form-control" rows="15"></textarea>
+    </div>
+
+    <!-- Explanation Text (col-4) -->
+    <div class="col-4">
+        <div class="card p-3 bg-light">
+            <h5>Formatting Instructions</h5>
+            <p>
+                Use **numeric numbering** for questions and **non-numeric bullets** for answer options.
+            </p>
+            <p>Example format:</p>
+            <pre style="background:#fff; padding:10px; border:1px solid #ccc;">
+1. You are not sick.
+   i. hope
+   ii. tired
+   iii. well
+   iv. remember
+            </pre>
+            <p>
+                Ensure that questions start with a **number followed by a dot (e.g., 1.)**, and options should be **indented and use non-numeric bullets (i, ii, iii, etc.)**.
+            </p>
         </div>
+    </div>
+</div>
+
         <button id="proceedButton" class="btn btn-primary">Proceed</button>
         
         <div class="mb-3 mt-4">
