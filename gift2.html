@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
     <title>Convert to Moodle Gift format</title>
-    
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     
     <!-- Bootstrap 5 & FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js" crossorigin="anonymous"></script>
 
     <style>
         body {
             font-family: 'Roboto', sans-serif;
-            background-color: #f8f9fa;
+            background-color: #f0f8ff; /* Light Blue Background */
         }
 
         .container {
@@ -22,7 +22,7 @@
         }
 
         h2 {
-            color: #343a40;
+            color: #003366; /* Dark Blue Heading */
             font-weight: 700;
         }
 
@@ -33,6 +33,8 @@
 
         .card {
             border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
         }
 
         .btn-custom {
@@ -50,6 +52,20 @@
 
         .icon {
             margin-right: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 5px solid #007bff;
+            border-radius: 8px;
+        }
+
+        .info-box pre {
+            background: #ffffff;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #d1d1d1;
         }
     </style>
 </head>
@@ -111,27 +127,24 @@
             </div>
         </div>
 
-        <!-- Question Input and Explanation -->
-        <div class="row mb-3">
-            <div class="col-md-8">
-                <label for="richTextInput" class="form-label"><i class="fas fa-edit"></i> Enter your questions here:</label>
-                <textarea id="richTextInput" class="form-control" rows="10" placeholder="1. Question text...&#10;  i. Option 1&#10;  ii. Option 2"></textarea>
-            </div>
+        <!-- Question Input -->
+        <div class="mb-3">
+            <label for="richTextInput" class="form-label"><i class="fas fa-edit"></i> Enter your questions here:</label>
+            <textarea id="richTextInput" class="form-control" rows="10"></textarea>
+        </div>
 
-            <div class="col-md-4">
-                <div class="card p-3 bg-light">
-                    <h5><i class="fas fa-info-circle"></i> Formatting Instructions</h5>
-                    <p>Use **numeric numbering** for questions and **non-numeric bullets** for answer options.</p>
-                    <p>Example format:</p>
-                    <pre class="bg-white p-2 border rounded">
+        <!-- Formatting Explanation -->
+        <div class="info-box mb-3">
+            <h5><i class="fas fa-info-circle"></i> Formatting Instructions</h5>
+            <p>Use **numeric numbering** for questions and **non-numeric bullets** for answer options.</p>
+            <p>Example format:</p>
+            <pre>
 1. You are not sick.
    i. hope
    ii. tired
    iii. well
    iv. remember
-                    </pre>
-                </div>
-            </div>
+            </pre>
         </div>
 
         <!-- Proceed Button -->
