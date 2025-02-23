@@ -218,9 +218,9 @@
                     giftText += "// " + tags.map(tag => `[tag:${tag}]`).join(" ") + "\n";
                 }
 
-                giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n`;
+                giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class\\=\"q_stem\">${questionLine}</p> {\n`;
                 options.forEach(option => {
-                    giftText += option === correctAnswer ? `=<p class="options">${option}</p>\n` : `~<p class="options">${option}</p>\n`;
+                    giftText += option === correctAnswer ? `=<p class\\=\"options\">${option}</p>\n` : `~<p class\\=\"options\">${option}</p>\n`;
                 });
                 giftText += "}\n\n";
                 questionNumber++;
