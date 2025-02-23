@@ -105,6 +105,7 @@
         </div>
     </div>
     <script>
+        document.getElementById('proceedButton').addEventListener('click', function() {
             const questionName = document.getElementById('questionNameInput').value.trim();
             const inputText = document.getElementById('richTextInput').value;
             const questions = inputText.split(/\n(?=\d+\.)/);
@@ -119,7 +120,9 @@
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
-            const dateTimeString = `${year}-${month}-${day}`;
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const dateTimeString = `${year}-${month}-${day} ${hours}:${minutes}`;
     
             let categoryString = "$CATEGORY: $course$/top/";
             if (categories.length > 0) {
@@ -167,11 +170,12 @@
                 questionNumber++;
             });
     
-            document.getElementById('resultDisplay').value = giftText.trim();
+            const resultDisplay = document.getElementById('resultDisplay');
+            resultDisplay.value = giftText.trim();
     
             // Download as text file
             if (questionName) {
-                const blob = new Blob([giftText.trim()], { type: "text/plain" });
+                const blob = new Blob([resultDisplay.value], { type: "text/plain" });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
                 link.download = `${questionName}.txt`;
