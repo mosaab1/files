@@ -146,15 +146,14 @@
         return "";
     }
 
-    // Save user input in cookies without duplicates
+    // Save user input to cookies (only when user leaves the field)
     function saveInputToCookies(inputSelector, cookieName) {
         document.querySelectorAll(inputSelector).forEach(input => {
             input.addEventListener("blur", function () {
-                let storedValues = getCookie(cookieName).split(",");
-                storedValues = storedValues.filter(v => v); // Remove empty values
-                if (!storedValues.includes(this.value.trim()) && this.value.trim() !== "") {
-                    storedValues.push(this.value.trim());
-                    setCookie(cookieName, storedValues.join(","), 30);
+                let storedValues = new Set(getCookie(cookieName).split(","));
+                if (this.value.trim()) {
+                    storedValues.add(this.value.trim()); // Prevent duplicates
+                    setCookie(cookieName, Array.from(storedValues).join(","), 30);
                 }
             });
         });
@@ -162,21 +161,17 @@
 
     // Provide autocomplete suggestions from stored cookies
     function setupAutocomplete(inputSelector, cookieName) {
-        document.querySelectorAll(inputSelector).forEach(input => {
-            input.addEventListener("input", function () {
-                let storedValues = getCookie(cookieName).split(",");
-                storedValues = storedValues.filter(v => v.toLowerCase().includes(this.value.toLowerCase()));
+        const storedValues = getCookie(cookieName).split(",").filter(v => v); // Remove empty values
+        if (storedValues.length === 0) return;
 
-                // Create a datalist for autocomplete
-                let datalist = document.getElementById(`${cookieName}-datalist`);
-                if (!datalist) {
-                    datalist = document.createElement("datalist");
-                    datalist.id = `${cookieName}-datalist`;
-                    document.body.appendChild(datalist);
-                }
-                datalist.innerHTML = storedValues.map(v => `<option value="${v}">`).join("");
-                this.setAttribute("list", datalist.id);
-            });
+        // Create a single <datalist> per field type
+        let datalist = document.createElement("datalist");
+        datalist.id = `${cookieName}-datalist`;
+        datalist.innerHTML = storedValues.map(v => `<option value="${v}">`).join("");
+        document.body.appendChild(datalist);
+
+        document.querySelectorAll(inputSelector).forEach(input => {
+            input.setAttribute("list", datalist.id);
         });
     }
 
@@ -248,7 +243,7 @@
         document.body.removeChild(link);
     });
 
-    // Setup event listeners on page load
+    // Optimize event listeners & autocomplete setup on page load
     document.addEventListener("DOMContentLoaded", function () {
         setupAutocomplete(".category-input", "categories");
         setupAutocomplete(".tag-input", "tags");
@@ -258,7 +253,8 @@
         saveInputToCookies(".tag-input", "tags");
         saveInputToCookies("#questionNameInput", "questionName");
     });
-</script>   
+</script>
+
     
 </body>
 </html>
