@@ -105,84 +105,70 @@
         </div>
     </div>
     <script>
-        document.getElementById('proceedButton').addEventListener('click', function() {
-            const questionName = document.getElementById('questionNameInput').value.trim();
-            const inputText = document.getElementById('richTextInput').value;
-            const questions = inputText.split(/\n(?=\d+\.)/);
-            const tagInputs = document.querySelectorAll('.tag-input');
-            const tags = Array.from(tagInputs).map(input => input.value).filter(tag => tag);
-            const categoryInputs = document.querySelectorAll('.category-input');
-            const categories = Array.from(categoryInputs).map(input => input.value).filter(category => category);
-    
-            let giftText = "";
-            let questionNumber = 1;
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const dateTimeString = `${year}-${month}-${day}`;
-    
-            let categoryString = "$CATEGORY: $course$/top/";
-            if (categories.length > 0) {
-                categoryString += categories.join('/') + ' ' + dateTimeString + '\n\n';
-            } else {
-                categoryString += dateTimeString + '\n\n';
-            }
-            giftText += categoryString;
-    
-            questions.forEach(question => {
-                const lines = question.split('\n');
-                let questionLine = lines[0].trim();
-                questionLine = questionLine.replace(/^\d+\.?\s*/, '');
-                const options = lines.slice(1).map(line => {
-                    let option = line.trim();
-                    option = option.replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '');
-                    return option;
-                }).filter(line => line);
-                
-                function shuffleArray(array) {
-                    for (let i = array.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [array[i], array[j]] = [array[j], array[i]];
-                    }
-                    return array;
-                }
-    
-                const shuffledOptions = shuffleArray([...options]);
-                const formattedQuestionNumber = String(questionNumber).padStart(2, '0');
-                const correctAnswer = options[0];
-    
-                if (tags.length > 0) {
-                    giftText += "// " + tags.map(tag => `[tag:${tag}]`).join(" ") + "\n";
-                }
-    
-                giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class\\="q_stem">${questionLine}</p> {\n`;
-                shuffledOptions.forEach(option => {
-                    if (option === correctAnswer) {
-                        giftText += `=<p class\\="options">${option}</p>\n`;
-                    } else {
-                        giftText += `~<p class\\="options">${option}</p>\n`;
-                    }
-                });
-                giftText += "}\n\n";
-                questionNumber++;
-            });
-    
-            document.getElementById('resultDisplay').value = giftText.trim();
-    
-            // Download as text file
-            if (questionName) {
-                const blob = new Blob([giftText.trim()], { type: "text/plain" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `${questionName}.txt`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                alert("Please enter a Question Name to save the file.");
-            }
+      document.getElementById('proceedButton').addEventListener('click', function() {
+    let questionName = document.getElementById('questionNameInput').value.trim();
+    const inputText = document.getElementById('richTextInput').value;
+    const questions = inputText.split(/\n(?=\d+\.)/);
+    const tagInputs = document.querySelectorAll('.tag-input');
+    const tags = Array.from(tagInputs).map(input => input.value.trim()).filter(tag => tag);
+    const categoryInputs = document.querySelectorAll('.category-input');
+    const categories = Array.from(categoryInputs).map(input => input.value.trim()).filter(category => category);
+
+    let giftText = "";
+    let questionNumber = 1;
+    const now = new Date();
+    const dateTimeString = now.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    let categoryString = `$CATEGORY: $course$/top/`;
+    categoryString += categories.length ? categories.join('/') + ' ' + dateTimeString + '\n\n' : dateTimeString + '\n\n';
+    giftText += categoryString;
+
+    questions.forEach(question => {
+        const lines = question.split('\n');
+        let questionLine = lines[0].trim().replace(/^\d+\.?\s*/, '');
+        const options = lines.slice(1).map(line => line.trim().replace(/^(?:[^\d\w]\s*|\w+\.\s*)/, '')).filter(line => line);
+
+        // Shuffle options
+        for (let i = options.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [options[i], options[j]] = [options[j], options[i]];
+        }
+
+        const formattedQuestionNumber = String(questionNumber).padStart(2, '0');
+        const correctAnswer = options[0];
+
+        if (tags.length) {
+            giftText += "// " + tags.map(tag => `[tag:${tag}]`).join(" ") + "\n";
+        }
+
+        giftText += `::${questionName}_Q${formattedQuestionNumber}[${correctAnswer}]::<p class="q_stem">${questionLine}</p> {\n`;
+        options.forEach(option => {
+            giftText += option === correctAnswer ? `=<p class="options">${option}</p>\n` : `~<p class="options">${option}</p>\n`;
         });
+        giftText += "}\n\n";
+        questionNumber++;
+    });
+
+    document.getElementById('resultDisplay').value = giftText.trim();
+
+    // Handle file saving
+    if (!questionName) {
+        questionName = prompt("Please enter a file name:", "my_questions");
+        if (!questionName) {
+            alert("File save cancelled.");
+            return;
+        }
+    }
+
+    const blob = new Blob([giftText.trim()], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${questionName}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
     </script>
     
     
